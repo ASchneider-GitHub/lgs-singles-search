@@ -1,0 +1,6 @@
+.cloudflare.env
+.gitignore
+banned-ips.txt
+cron.log
+.DS_Store
+Thumbs.db

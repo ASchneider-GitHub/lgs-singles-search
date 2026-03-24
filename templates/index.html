@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta property="og:title" content="LGS Singles Search" />
+    <meta property="og:description" content="Search for singles listed at local LGS locations" />
+    <meta property="og:url" content="https://mtg.aschneider.tech" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#5865f2"> <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LGS Singles Search</title>
+    <style>
+        /* Professional Dark Palette */
+        :root {
+            --bg-dark: #121416;
+            --surface-dark: #1e2124;
+            --border-color: #36393e;
+            --text-main: #eef1f5;
+            --text-dim: #b9bbbe;
+            --accent-blue: #5865f2;
+            --accent-blue-hover: #4752c4;
+            --accent-red: #da373c;
+            --accent-green: #23a559;
+        }
+
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 85%;
+        }
+
+        h1 { font-weight: 600; font-size: 26px; margin-bottom: 4px; color: var(--text-main); }
+        
+        /* Header Links Styling */
+        h4 { font-weight: 400; color: var(--text-dim); margin-bottom: 8px; }
+        h4 a { 
+            color: var(--accent-blue); 
+            text-decoration: none; 
+            transition: color 0.2s; 
+        }
+        h4 a:hover { color: var(--accent-blue-hover); text-decoration: underline; }
+
+        p { color: var(--text-dim); margin-bottom: 20px; font-size: 15px; opacity: 0.8; }
+
+        /* Input Area */
+        textarea { 
+            width: 100%; 
+            height: 160px; 
+            background: var(--surface-dark); 
+            color: #fff; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px;
+            padding: 15px; 
+            font-family: 'Consolas', 'Monaco', monospace;
+            box-sizing: border-box;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            resize: vertical;
+        }
+        textarea:focus { border-color: var(--accent-blue); }
+
+        /* Buttons and Controls */
+        .controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            margin-top: 20px; 
+        }
+
+        button { 
+            padding: 12px 28px; 
+            border-radius: 6px; 
+            border: none; 
+            font-size: 14px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.2s;
+        }
+
+        /* NEW: Disabled button state */
+        button:disabled {
+            background: var(--border-color) !important;
+            color: var(--text-dim) !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+            opacity: 0.6;
+        }
+
+        .btn-search { background: var(--accent-blue); color: white; }
+        .btn-search:hover { background: var(--accent-blue-hover); transform: translateY(-1px); }
+
+        .btn-clear { background: transparent; color: var(--text-dim); border: 1px solid var(--border-color); }
+        .btn-clear:hover { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+
+        /* Status Indicators */
+        #status-area { height: 24px; display: flex; align-items: center; margin-left: 10px; }
+
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent-blue);
+            animation: spin 0.8s linear infinite;
+        }
+
+        .checkmark { color: var(--accent-green); font-size: 15px; font-weight: 600; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Output Window */
+        #output { 
+            background: #090a0b; 
+            padding: 30px; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px;
+            white-space: pre; 
+            overflow-x: auto; 
+            margin-top: 24px; 
+            color: #d1d1d1; 
+            font-family: 'Consolas', 'Monaco', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            min-height: 200px;
+        }
+
+        #output a { color: var(--accent-blue); text-decoration: none; font-weight: 500; }
+        #output a:hover { text-decoration: underline; color: #7289da; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>LGS Singles Search</h1>
+    <h4>
+        Search for singles listed at 
+        <a href="https://goingaming.tcgplayerpro.com" target="_blank">Goin' Gaming</a>, 
+        <a href="https://redcastle.tcgplayerpro.com" target="_blank">Red Castle</a>, and 
+        <a href="https://retrosharkgaming.tcgplayerpro.com" target="_blank">Retro Shark Gaming</a>
+    </h4>
+    <p>Enter card names (one per line) to query local inventory and pricing.</p>
+    
+    <textarea id="cardInput" placeholder="Sol Ring&#10;Mana Vault&#10;Ancient Tomb"></textarea>
+    
+    <div class="controls">
+        <button class="btn-search" onclick="startSearch()">Search Catalog</button>
+        <button class="btn-clear" onclick="clearOutput()">Clear Results</button>
+        <div id="status-area"></div>
+    </div>
+
+    <div id="output">Results will be displayed here...</div>
+</div>
+
+<script>
+    // Global variable to prevent overlapping requests
+    let isSearching = false;
+
+    function clearOutput() {
+        if (isSearching) return; // Don't clear while searching
+        document.getElementById('output').innerHTML = "Results will be displayed here...";
+        document.getElementById('status-area').innerHTML = "";
+    }
+
+    function linkify(text) {
+        const urlPattern = /(https?:\/\/[^\s+|]+)/g;
+        return text.replace(urlPattern, function(url) {
+            return `<a href="${url}" target="_blank">${url}</a>`;
+        });
+    }
+
+    async function startSearch() {
+        // 1. Guard against double-fires or loops
+        if (isSearching) return;
+
+        const outputBox = document.getElementById('output');
+        const statusArea = document.getElementById('status-area');
+        const cards = document.getElementById('cardInput').value;
+        const searchBtn = document.querySelector('.btn-search');
+        
+        if (!cards.trim()) return;
+
+        try {
+            // 2. Lock UI
+            isSearching = true;
+            searchBtn.disabled = true;
+            searchBtn.innerText = "Searching...";
+            statusArea.innerHTML = '<div class="spinner"></div>';
+            outputBox.innerHTML = "Initializing connection to script...\n";
+
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'cards=' + encodeURIComponent(cards)
+            });
+
+            if (!response.ok) throw new Error("Server Error");
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            outputBox.innerHTML = ""; 
+
+            let buffer = ""; 
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) {
+                    statusArea.innerHTML = '<span class="checkmark">✓ Search Complete</span>';
+                    break;
+                }
+                
+                buffer += decoder.decode(value, {stream: true});
+                outputBox.innerHTML = linkify(buffer);
+                
+                // Keep output scrolled to bottom
+                outputBox.scrollTop = outputBox.scrollHeight;
+            }
+        } catch (err) {
+            statusArea.innerHTML = '<span style="color: var(--accent-red);">Connection Error</span>';
+            outputBox.innerHTML += "\n[Error]: Unable to reach Python backend.";
+        } finally {
+            // 3. Unlock UI regardless of success or failure
+            isSearching = false;
+            searchBtn.disabled = false;
+            searchBtn.innerText = "Search Catalog";
+        }
+    }
+</script>
+
+</body>
+</html>

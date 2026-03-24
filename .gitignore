@@ -1,3 +1,4 @@
+.cloudflare.env.example
 .cloudflare.env
 banned-ips.txt
 cron.log

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CONF_FILE="/home/aschneider/mtg-app/.cloudflare.env"
-LOG_FILE="/home/aschneider/mtg-app/banned-ips.txt"
+CONF_FILE="$HOME/lgs-singles-search/.cloudflare.env"
+LOG_FILE="$HOME/lgs-singles-search/banned-ips.txt"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 
 source "$CONF_FILE"
